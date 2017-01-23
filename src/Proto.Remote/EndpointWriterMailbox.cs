@@ -19,8 +19,8 @@ namespace Proto.Remote
 
     public class EndpointWriterMailbox : IMailbox
     {
-        private readonly BoundedMailboxQueue _systemMessages = new BoundedMailboxQueue(4);
-        private readonly BoundedMailboxQueue _userMessages = new BoundedMailboxQueue(1024*1024);
+        private readonly IMailboxQueue _systemMessages = new BoundedMailboxQueue(4);
+        private readonly IMailboxQueue _userMessages = new UnboundedMailboxQueue();// new BoundedMailboxQueue(1024*1024);
         private IDispatcher _dispatcher;
         private IMessageInvoker _invoker;
 

@@ -15,6 +15,7 @@ namespace Node2
 {
     public class EchoActor : IActor
     {
+        private int _count;
         private PID _sender;
 
         public Task ReceiveAsync(IContext context)
@@ -28,6 +29,11 @@ namespace Node2
                     return Actor.Done;
                 case Ping _:
                     _sender.Tell(new Pong());
+                    _count++;
+                    if (_count % 50000 == 0)
+                    {
+                        Console.WriteLine(_count);
+                    }
                     return Actor.Done;
                 default:
                     return Actor.Done;

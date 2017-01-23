@@ -51,8 +51,9 @@ class Program
         var wg = new AutoResetEvent(false);
         var props = Actor
             .FromProducer(() => new LocalActor(0, messageCount, wg))
-            .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new BoundedMailboxQueue(131072)));
+            .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new UnboundedMailboxQueue()));
 
+        run:
         var pid = Actor.Spawn(props);
         var remote = new PID("127.0.0.1:12000", "remote");
         remote.RequestAsync<Messages.Start>(new Messages.StartRemote() {Sender = pid}).Wait();
@@ -71,6 +72,8 @@ class Program
         var t = ((messageCount * 2.0) / elapsed.TotalMilliseconds) * 1000;
         Console.WriteLine("Throughput {0} msg / sec",t);
 
+        Console.WriteLine("Again?");
         Console.ReadLine();
+        goto run;
     }
 }
