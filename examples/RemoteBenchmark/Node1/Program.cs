@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Proto;
@@ -45,17 +46,18 @@ class Program
     static void Main(string[] args)
     {
         Serialization.RegisterFileDescriptor(ProtosReflection.Descriptor);
-        RemotingSystem.Start("127.0.0.1", 12001);
+        var remoteStats = new MailboxStats();
+        RemotingSystem.Start("127.0.0.1", 12000, remoteStats);
 
-        var messageCount = 1000000;
+        var messageCount = 2*1000*1000;
         var wg = new AutoResetEvent(false);
+        var pingActorStats = new MailboxStats();
         var props = Actor
             .FromProducer(() => new LocalActor(0, messageCount, wg))
-            .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new UnboundedMailboxQueue()));
+            .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new BoundedMailboxQueue(1024*1024), pingActorStats));
 
-        run:
         var pid = Actor.Spawn(props);
-        var remote = new PID("127.0.0.1:12000", "remote");
+        var remote = new PID("127.0.0.1:12001", "remote");
         remote.RequestAsync<Messages.Start>(new Messages.StartRemote() {Sender = pid}).Wait();
 
         var start = DateTime.Now;
@@ -65,15 +67,43 @@ class Program
         {
             remote.Tell(msg);
         }
-        wg.WaitOne();
+        wg.WaitOne(30000);
         var elapsed = DateTime.Now - start;
         Console.WriteLine("Elapsed {0}",elapsed);
 
         var t = ((messageCount * 2.0) / elapsed.TotalMilliseconds) * 1000;
         Console.WriteLine("Throughput {0} msg / sec",t);
 
-        Console.WriteLine("Again?");
+        Console.WriteLine($"Ping actor Received:{pingActorStats.Received} Posted:{pingActorStats.Posted}");
+        Console.WriteLine($"Remote system Received:{remoteStats.Received} Posted:{remoteStats.Posted}");
+
         Console.ReadLine();
-        goto run;
+    }
+}
+
+internal class MailboxStats : IMailboxStatistics
+{
+    private int _posted;
+    private int _received;
+
+    public int Posted => _posted;
+    public int Received => _received;
+
+    public void MailboxStarted()
+    {
+    }
+
+    public void MessagePosted(object message)
+    {
+        Interlocked.Increment(ref _posted);
+    }
+
+    public void MessageReceived(object message)
+    {
+        Interlocked.Increment(ref _received);
+    }
+
+    public void MailboxEmpty()
+    {
     }
 }

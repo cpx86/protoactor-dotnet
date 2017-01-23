@@ -25,4 +25,9 @@
     <PackageReference Include="NETStandard.Library" Version="1.6.1" />
     <PackageReference Include="System.ValueTuple" Version="4.3.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Threading.Thread">
+      <HintPath>..\..\..\..\..\Users\chpa\.nuget\packages\system.threading.thread\4.0.0\ref\netstandard1.3\System.Threading.Thread.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

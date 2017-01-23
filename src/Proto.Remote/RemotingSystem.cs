@@ -14,7 +14,7 @@ namespace Proto.Remote
         private static Server _server;
         public static PID EndpointManagerPid { get; private set; }
 
-        public static void Start(string host, int port)
+        public static void Start(string host, int port, params IMailboxStatistics[] stats)
         {
             var addr = host + ":" + port;
             ProcessRegistry.Instance.Address = addr;
@@ -28,7 +28,7 @@ namespace Proto.Remote
             _server.Start();
             var emProps =
                 Actor.FromProducer(() => new EndpointManager())
-                    .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new UnboundedMailboxQueue()));
+                    .WithMailbox(() => new DefaultMailbox(new BoundedMailboxQueue(32), new BoundedMailboxQueue(1024*1024), stats));
             EndpointManagerPid = Actor.Spawn(emProps);
 
             Console.WriteLine($"[REMOTING] Starting Proto.Actor server on {addr}");

@@ -68,9 +68,9 @@ namespace Proto.Tests
                 _invoker.InvokeUserMessageAsync(msg).Wait();
             }
 
-            public void PostSystemMessage(SystemMessage sys)
+            public void PostSystemMessage(SystemMessage msg)
             {
-                _invoker.InvokeSystemMessageAsync(sys);
+                _invoker.InvokeSystemMessageAsync(msg);
             }
 
             public void RegisterHandlers(IMessageInvoker invoker, IDispatcher dispatcher)
