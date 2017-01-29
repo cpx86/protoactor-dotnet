@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using Microsoft.Extensions.Logging;
 using Proto.Mailbox;
 
 namespace Proto
@@ -22,6 +23,8 @@ namespace Proto
 
         public Receive[] ReceivePlugins { get; private set; }
         public Spawner Spawner { get; private set; }
+        public ILogger Logger { get; private set; }
+
 
         public Props WithProducer(Func<IActor> producer)
         {
@@ -48,11 +51,17 @@ namespace Proto
             return Copy(props => props.ReceivePlugins = plugins);
         }
 
+        public Props WithLogger(ILogger logger)
+        {
+            return Copy(props => props.Logger = logger);
+        }
+
         private Props Copy(Action<Props> mutator)
         {
             var props = new Props
             {
                 Dispatcher = Dispatcher,
+                Logger = Logger,
                 MailboxProducer = MailboxProducer,
                 Producer = Producer,
                 ReceivePlugins = ReceivePlugins,

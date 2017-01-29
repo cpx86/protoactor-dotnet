@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Proto.Mailbox;
 
 namespace Proto
@@ -201,7 +202,7 @@ namespace Proto
                     case ResumeMailbox rm:
                         break;
                     default:
-                        Console.WriteLine("Unknown system message {0}", msg);
+                        Props.Logger.LogError("Unknown system message {0}", msg);
                         break;
                 }
             }
