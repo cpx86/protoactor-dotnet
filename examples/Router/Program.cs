@@ -62,8 +62,7 @@ namespace RouterExample
 
         private static void TestBroadcastGroup()
         {
-            var props = Router.NewBroadcastGroup(
-                MyActorProps,
+            var props = MyActorProps.AsBroadcastGroup(
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
@@ -78,7 +77,7 @@ namespace RouterExample
 
         private static void TestBroadcastPool()
         {
-            var props = Router.NewBroadcastPool(MyActorProps, 5);
+            var props = MyActorProps.AsBroadcastPool(5);
             var pid = Actor.Spawn(props);
             for (var i = 0; i < 10; i++)
             {
@@ -88,8 +87,7 @@ namespace RouterExample
 
         private static void TestConsistentHashGroup()
         {
-            var props = Router.NewConsistentHashGroup(
-                MyActorProps,
+            var props = MyActorProps.AsConsistentHashGroup(
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
@@ -104,7 +102,7 @@ namespace RouterExample
 
         private static void TestConsistentHashPool()
         {
-            var props = Router.NewConsistentHashPool(MyActorProps, 5);
+            var props = MyActorProps.AsConsistentHashPool(5);
             var pid = Actor.Spawn(props);
             for (var i = 0; i < 10; i++)
             {
@@ -114,8 +112,7 @@ namespace RouterExample
 
         private static void TestRoundRobinGroup()
         {
-            var props = Router.NewRoundRobinGroup(
-                MyActorProps,
+            var props = MyActorProps.AsRoundRobinGroup(
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
@@ -130,7 +127,7 @@ namespace RouterExample
 
         private static void TestRoundRobinPool()
         {
-            var props = Router.NewRoundRobinPool(MyActorProps, 5);
+            var props = MyActorProps.AsRoundRobinPool(5);
             var pid = Actor.Spawn(props);
             for (var i = 0; i < 10; i++)
             {
@@ -140,8 +137,7 @@ namespace RouterExample
 
         private static void TestRandomGroup()
         {
-            var props = Router.NewRandomGroup(
-                MyActorProps,
+            var props = MyActorProps.AsRandomGroup(
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
                 Actor.Spawn(MyActorProps),
@@ -156,7 +152,7 @@ namespace RouterExample
 
         private static void TestRandomPool()
         {
-            var props = Router.NewRandomPool(MyActorProps, 5);
+            var props = MyActorProps.AsRandomPool(5);
             var pid = Actor.Spawn(props);
             for (var i = 0; i < 10; i++)
             {

@@ -9,7 +9,7 @@ using Proto.Router.Routers;
 
 namespace Proto.Router
 {
-    public class RouterProcess : Process
+    internal class RouterProcess : Process
     {
         private readonly PID _router;
         private readonly RouterState _state;

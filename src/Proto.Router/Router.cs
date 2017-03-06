@@ -11,47 +11,47 @@ namespace Proto.Router
 {
     public static class Router
     {
-        public static Props NewBroadcastGroup(Props props, params PID[] routees)
+        public static Props AsBroadcastGroup(this Props props, params PID[] routees)
         {
             return props.WithSpawner(Spawner(new BroadcastGroupRouterConfig(routees)));
         }
 
-        public static Props NewConsistentHashGroup(Props props, params PID[] routees)
+        public static Props AsConsistentHashGroup(this Props props, params PID[] routees)
         {
             return props.WithSpawner(Spawner(new ConsistentHashGroupRouterConfig(routees)));
         }
 
-        public static Props NewRandomGroup(Props props, params PID[] routees)
+        public static Props AsRandomGroup(this Props props, params PID[] routees)
         {
             return props.WithSpawner(Spawner(new RandomGroupRouterConfig(routees)));
         }
 
-        public static Props NewRoundRobinGroup(Props props, params PID[] routees)
+        public static Props AsRoundRobinGroup(this Props props, params PID[] routees)
         {
             return props.WithSpawner(Spawner(new RoundRobinGroupRouterConfig(routees)));
         }
 
-        public static Props NewBroadcastPool(Props props, int poolSize)
+        public static Props AsBroadcastPool(this Props props, int poolSize)
         {
             return props.WithSpawner(Spawner(new BroadcastPoolRouterConfig(poolSize)));
         }
 
-        public static Props NewConsistentHashPool(Props props, int poolSize)
+        public static Props AsConsistentHashPool(this Props props, int poolSize)
         {
             return props.WithSpawner(Spawner(new ConsistentHashPoolRouterConfig(poolSize)));
         }
 
-        public static Props NewRandomPool(Props props, int poolSize)
+        public static Props AsRandomPool(this Props props, int poolSize)
         {
             return props.WithSpawner(Spawner(new RandomPoolRouterConfig(poolSize)));
         }
 
-        public static Props NewRoundRobinPool(Props props, int poolSize)
+        public static Props AsRoundRobinPool(this Props props, int poolSize)
         {
             return props.WithSpawner(Spawner(new RoundRobinPoolRouterConfig(poolSize)));
         }
 
-        public static Spawner Spawner(IRouterConfig config)
+        private static Spawner Spawner(IRouterConfig config)
         {
             return (id, props, parent) =>
             {

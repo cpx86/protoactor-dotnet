@@ -12,7 +12,7 @@ using System.Text;
 
 namespace Proto.Router
 {
-    public class HashRing
+    internal class HashRing
     {
         private const int ReplicaCount = 100;
         private static readonly HashAlgorithm HashAlgorithm = MD5.Create();

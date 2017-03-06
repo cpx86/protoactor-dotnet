@@ -14,7 +14,7 @@ using System.Collections.ObjectModel;
 
 namespace Proto
 {
-    public class Context : IMessageInvoker, IContext, ISupervisor
+    public class LocalContext : IMessageInvoker, IContext, ISupervisor
     {
         private readonly Stack<Receive> _behavior;
         private readonly Receive _middleware;
@@ -32,7 +32,7 @@ namespace Proto
         private HashSet<PID> _watching;
 
 
-        public Context(Func<IActor> producer, ISupervisorStrategy supervisorStrategy, Receive middleware, PID parent)
+        public LocalContext(Func<IActor> producer, ISupervisorStrategy supervisorStrategy, Receive middleware, PID parent)
         {
             _producer = producer;
             _supervisorStrategy = supervisorStrategy;
@@ -293,7 +293,7 @@ namespace Proto
 
         internal static Task DefaultReceive(IContext context)
         {
-            var c = (Context)context;
+            var c = (LocalContext)context;
             if (c.Message is PoisonPill)
             {
                 c.Self.Stop();

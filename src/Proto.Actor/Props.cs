@@ -34,7 +34,7 @@ namespace Proto
 
         public static Spawner DefaultSpawner = (name, props, parent) =>
         {
-            var ctx = new Context(props.Producer, props.SupervisorStrategy, props.MiddlewareChain, parent);
+            var ctx = new LocalContext(props.Producer, props.SupervisorStrategy, props.MiddlewareChain, parent);
             var mailbox = props.MailboxProducer();
             var dispatcher = props.Dispatcher;
             var reff = new LocalProcess(mailbox);
@@ -78,7 +78,7 @@ namespace Proto
             {
                 props.Middleware = Middleware.Concat(middleware).ToList();
                 props.MiddlewareChain = props.Middleware.Reverse()
-                    .Aggregate((Receive) Context.DefaultReceive, (inner, outer) => outer(inner));
+                    .Aggregate((Receive) LocalContext.DefaultReceive, (inner, outer) => outer(inner));
             });
         }
 

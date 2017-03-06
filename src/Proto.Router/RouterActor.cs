@@ -12,7 +12,7 @@ using Proto.Router.Routers;
 
 namespace Proto.Router
 {
-    public class RouterActor : IActor
+    internal class RouterActor : IActor
     {
         private readonly IRouterConfig _config;
         private readonly Props _routeeProps;
