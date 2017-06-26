@@ -4,30 +4,40 @@ var packageVersion = "0.1.10";
 
 var target = Argument("target", "Default");
 var mygetApiKey = Argument<string>("mygetApiKey", null);
+var nugetApiKey = Argument<string>("nugetApiKey", null);
 var currentBranch = Argument<string>("currentBranch", GitBranchCurrent("./").FriendlyName);
 var buildNumber = Argument<string>("buildNumber", null);
 var configuration = "Release";
 
 var versionSuffix = "";
 if (currentBranch != "master") {
-    versionSuffix += "-" + currentBranch;
     if (buildNumber != null) {
         versionSuffix += "-build" + buildNumber.PadLeft(5, '0');
     }
+    versionSuffix += "-" + currentBranch;
+    if (versionSuffix.Length > 20) {
+        versionSuffix = versionSuffix.Substring(0, 20)
+    }
     packageVersion += versionSuffix;
 }
-
-bool IsPRBuild()
-{
-    return EnvironmentVariable("APPVEYOR_PULL_REQUEST_TITLE") != null;
-}
+var isPullRequestBuild = EnvironmentVariable("APPVEYOR_PULL_REQUEST_TITLE") != null;
+var nuGetPushSettings = new NuGetPushSettings 
+    {
+        Source = "https://www.nuget.org/api/v2/package",
+        ApiKey = nugetApiKey
+    };
+var myGetPushSettings = new NuGetPushSettings 
+    {
+        Source = "https://www.myget.org/F/protoactor/api/v2/package",
+        ApiKey = mygetApiKey
+    };
 
 Information("Version: " + packageVersion);
 
 Task("PatchVersion")
     .Does(() => 
     {
-        if (IsPRBuild())
+        if (isPullRequestBuild)
         {
             return;
         }
@@ -69,7 +79,7 @@ Task("UnitTest")
 Task("Pack")
     .Does(() => 
     {
-        if (IsPRBuild())
+        if (isPullRequestBuild)
         {
             return;
         }
@@ -87,18 +97,21 @@ Task("Pack")
 Task("Push")
     .Does(() => 
     {
-        if (IsPRBuild())
+        if (isPullRequestBuild)
         {
             return;
         }
         var pkgs = GetFiles("out/*.nupkg");
         foreach(var pkg in pkgs) 
         {
-            NuGetPush(pkg, new NuGetPushSettings 
+            NuGetPush(pkg, myGetPushSettings);
+        }
+        if (currentBranch == "master")
+        {
+            foreach(var pkg in pkgs) 
             {
-                Source = "https://www.myget.org/F/protoactor/api/v2/package",
-                ApiKey = mygetApiKey
-            });
+                NuGetPush(pkg, nuGetPushSettings);
+            }
         }
     });
 
