@@ -22,16 +22,16 @@ namespace Proto
         Stopping
     }
 
-    public class LocalContext : IMessageInvoker, IContext, ISupervisor
+    public class LocalContext<T> : IMessageInvoker<T>, IContext<T>, ISupervisor
     {
         public static readonly IReadOnlyCollection<PID> EmptyChildren = new List<PID>();
-        private readonly Func<IActor> _producer;
+        private readonly Func<IActor<T>> _producer;
 
-        private readonly Receive _receiveMiddleware;
-        private readonly Sender _senderMiddleware;
+        private readonly Receive<T> _receiveMiddleware;
+        private readonly Sender<T> _senderMiddleware;
         private readonly ISupervisorStrategy _supervisorStrategy;
         private FastSet<PID> _children;
-        private object _message;
+        private T _message;
 
         //TODO: I would like to extract these two as optional components in the future
         //for ReceiveTimeout we could have an object with the SetReceiveTimeout
@@ -48,7 +48,7 @@ namespace Proto
         private ContextState _state;
         private FastSet<PID> _watchers;
 
-        public LocalContext(Func<IActor> producer, ISupervisorStrategy supervisorStrategy, Receive receiveMiddleware, Sender senderMiddleware, PID parent)
+        public LocalContext(Func<IActor<T>> producer, ISupervisorStrategy supervisorStrategy, Receive<T> receiveMiddleware, Sender<T> senderMiddleware, PID parent)
         {
             _producer = producer;
             _supervisorStrategy = supervisorStrategy;
@@ -62,20 +62,21 @@ namespace Proto
             IncarnateActor();
         }
 
-        private static ILogger Logger { get; } = Log.CreateLogger<LocalContext>();
+        private static ILogger Logger { get; } = Log.CreateLogger<LocalContext<T>>();
 
         public IReadOnlyCollection<PID> Children => _children?.ToList() ?? EmptyChildren;
 
-        public IActor Actor { get; private set; }
+        public IActor<T> Actor { get; private set; }
         public PID Parent { get; }
         public PID Self { get; set; }
 
-        public object Message
+        public T Message
         {
             get
             {
-                var r = _message as MessageEnvelope;
-                return r != null ? r.Message : _message;
+                return _message;
+                //var r = _message as MessageEnvelope;
+                //return r != null ? r.Message : _message;
             }
         }
 
@@ -85,13 +86,13 @@ namespace Proto
         {
             get
             {
-                if (_message is MessageEnvelope messageEnvelope)
-                {
-                    if (messageEnvelope.Header != null)
-                    {
-                        return messageEnvelope.Header;
-                    }
-                }
+                //if (_message is MessageEnvelope messageEnvelope)
+                //{
+                //    if (messageEnvelope.Header != null)
+                //    {
+                //        return messageEnvelope.Header;
+                //    }
+                //}
                 return MessageHeader.EmptyHeader;
             }
         }
@@ -112,19 +113,19 @@ namespace Proto
             Sender.Tell(message);
         }
 
-        public PID Spawn(Props props)
+        public PID Spawn(Props<T> props)
         {
             var id = ProcessRegistry.Instance.NextId();
             return SpawnNamed(props, id);
         }
 
-        public PID SpawnPrefix(Props props, string prefix)
+        public PID SpawnPrefix(Props<T> props, string prefix)
         {
             var name = prefix + ProcessRegistry.Instance.NextId();
             return SpawnNamed(props, name);
         }
 
-        public PID SpawnNamed(Props props, string name)
+        public PID SpawnNamed(Props<T> props, string name)
         {
             var pid = props.Spawn($"{Self.Id}/{name}", Self);
             if (_children == null)
@@ -182,32 +183,32 @@ namespace Proto
             ReceiveTimeout = TimeSpan.Zero;
         }
 
-        public Task ReceiveAsync(object message)
+        public Task ReceiveAsync(T message)
         {
             return ProcessMessageAsync(message);
         }
 
-        public void Tell(PID target, object message)
+        public void Tell(PID target, T message)
         {
             SendUserMessage(target, message);
         }
 
-        public void Request(PID target, object message)
+        public void Request(PID target, T message)
         {
             var messageEnvelope = new MessageEnvelope(message, Self, null);
             SendUserMessage(target, messageEnvelope);
         }
 
-        public Task<T> RequestAsync<T>(PID target, object message, TimeSpan timeout)
+        public Task<T> RequestAsync<T>(PID target, T message, TimeSpan timeout)
             => RequestAsync(target, message, new FutureProcess<T>(timeout));
 
-        public Task<T> RequestAsync<T>(PID target, object message, CancellationToken cancellationToken)
+        public Task<T> RequestAsync<T>(PID target, T message, CancellationToken cancellationToken)
             => RequestAsync(target, message, new FutureProcess<T>(cancellationToken));
 
-        public Task<T> RequestAsync<T>(PID target, object message)
+        public Task<T> RequestAsync<T>(PID target, T message)
             => RequestAsync(target, message, new FutureProcess<T>());
 
-        public void ReenterAfter<T>(Task<T> target, Func<Task<T>, Task> action)
+        public void ReenterAfter<T2>(Task<T2> target, Func<Task<T2>, Task> action)
         {
             var msg = _message;
             var cont = new Continuation(() => action(target), msg);
@@ -263,8 +264,8 @@ namespace Proto
             {
                 switch (msg)
                 {
-                    case Started s:
-                        return InvokeUserMessageAsync(s);
+                    //case Started s:
+                    //    return InvokeUserMessageAsync(s);
                     case Stop _:
                         return HandleStopAsync();
                     case Terminated t:
@@ -284,9 +285,9 @@ namespace Proto
                         return Task.FromResult(0);
                     case ResumeMailbox _:
                         return Task.FromResult(0);
-                    case Continuation cont:
-                        _message = cont.Message;
-                        return cont.Action();
+                    //case Continuation cont:
+                    //    _message = cont.Message;
+                    //    return cont.Action();
                     default:
                         Logger.LogWarning("Unknown system message {0}", msg);
                         return Task.FromResult(0);
@@ -299,7 +300,7 @@ namespace Proto
             }
         }
 
-        public Task InvokeUserMessageAsync(object msg)
+        public Task InvokeUserMessageAsync(T msg)
         {
             var influenceTimeout = true;
             if (ReceiveTimeout > TimeSpan.Zero)
@@ -332,9 +333,9 @@ namespace Proto
             EscalateFailure(reason, Self);
         }
 
-        internal static Task DefaultReceive(IContext context)
+        internal static Task DefaultReceive(IContext<T> context)
         {
-            var c = (LocalContext) context;
+            var c = (LocalContext<T>) context;
             if (c.Message is PoisonPill)
             {
                 c.Self.Stop();
@@ -343,13 +344,13 @@ namespace Proto
             return c.Actor.ReceiveAsync(context);
         }
 
-        internal static Task DefaultSender(ISenderContext context, PID target, MessageEnvelope envelope)
+        internal static Task DefaultSender(ISenderContext<T> context, PID target, MessageEnvelope envelope)
         {
-            target.Ref.SendUserMessage(target, envelope);
+            //((IProcess<T>)target.Ref).SendUserMessage(target, envelope);
             return Task.FromResult(0);
         }
 
-        private Task ProcessMessageAsync(object msg)
+        private Task ProcessMessageAsync(T msg)
         {
             _message = msg;
             return _receiveMiddleware != null ? _receiveMiddleware(this) : DefaultReceive(this);
@@ -393,7 +394,7 @@ namespace Proto
         private async Task HandleRestartAsync()
         {
             _state = ContextState.Restarting;
-            await InvokeUserMessageAsync(Restarting.Instance);
+            //await InvokeUserMessageAsync(Restarting.Instance);
             if (_children != null)
             {
                 foreach (var child in _children)
@@ -442,7 +443,7 @@ namespace Proto
         private async Task HandleTerminatedAsync(Terminated msg)
         {
             _children?.Remove(msg.Who);
-            await InvokeUserMessageAsync(msg);
+            //await InvokeUserMessageAsync(msg);
             await TryRestartOrTerminateAsync();
         }
 
@@ -455,7 +456,7 @@ namespace Proto
         {
             _state = ContextState.Stopping;
             //this is intentional
-            await InvokeUserMessageAsync(Stopping.Instance);
+            //await InvokeUserMessageAsync(Stopping.Instance);
             if (_children != null)
             {
                 foreach (var child in _children)
@@ -490,7 +491,7 @@ namespace Proto
         {
             ProcessRegistry.Instance.Remove(Self);
             //This is intentional
-            await InvokeUserMessageAsync(Stopped.Instance);
+            //await InvokeUserMessageAsync(Stopped.Instance);
 
             DisposeActorIfDisposable();
 
@@ -522,13 +523,13 @@ namespace Proto
             IncarnateActor();
             Self.SendSystemMessage(ResumeMailbox.Instance);
 
-            await InvokeUserMessageAsync(Started.Instance);
+            //await InvokeUserMessageAsync(Started.Instance);
             if (_stash != null)
             {
                 while (_stash.Any())
                 {
                     var msg = _stash.Pop();
-                    await InvokeUserMessageAsync(msg);
+                    //await InvokeUserMessageAsync(msg);
                 }
             }
         }

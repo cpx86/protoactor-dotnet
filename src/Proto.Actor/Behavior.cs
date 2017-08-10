@@ -9,24 +9,24 @@ using System.Threading.Tasks;
 
 namespace Proto
 {
-    public class Behavior
+    public class Behavior<T>
     {
-        private readonly Stack<Receive> _behaviors = new Stack<Receive>();
+        private readonly Stack<Receive<T>> _behaviors = new Stack<Receive<T>>();
 
         public Behavior() { }
 
-        public Behavior(Receive receive)
+        public Behavior(Receive<T> receive)
         {
             Become(receive);
         }
 
-        public void Become(Receive receive)
+        public void Become(Receive<T> receive)
         {
             _behaviors.Clear();
             _behaviors.Push(receive);
         }
 
-        public void BecomeStacked(Receive receive)
+        public void BecomeStacked(Receive<T> receive)
         {
             _behaviors.Push(receive);
         }
@@ -36,7 +36,7 @@ namespace Proto
             _behaviors.Pop();
         }
 
-        public Task ReceiveAsync(IContext context)
+        public Task ReceiveAsync(IContext<T> context)
         {
             var behavior = _behaviors.Peek();
             return behavior(context);

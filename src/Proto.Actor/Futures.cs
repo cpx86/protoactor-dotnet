@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Proto
 {
-    internal class FutureProcess<T> : Process
+    internal class FutureProcess<T> : Process<T>
     {
         private readonly CancellationTokenSource _cts;
         private readonly TaskCompletionSource<T> _tcs;
@@ -25,7 +25,7 @@ namespace Proto
             _cts = cts;
 
             var name = ProcessRegistry.Instance.NextId();
-            var (pid, absent) = ProcessRegistry.Instance.TryAdd(name, this);
+            var (pid, absent) = ProcessRegistry.Instance.TryAdd(name, (IProcess<object>) this);
             if (!absent)
             {
                 throw new ProcessNameExistException(name);
@@ -51,7 +51,7 @@ namespace Proto
         public PID Pid { get; }
         public Task<T> Task { get; }
 
-        protected internal override void SendUserMessage(PID pid, object message)
+        public override void SendUserMessage(PID pid, T message)
         {
             var env = MessageEnvelope.Unwrap(message);
             
@@ -73,7 +73,7 @@ namespace Proto
 
         }
 
-        protected internal override void SendSystemMessage(PID pid, object message)
+        public override void SendSystemMessage(PID pid, object message)
         {
         }
     }

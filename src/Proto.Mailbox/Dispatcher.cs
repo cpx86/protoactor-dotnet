@@ -10,10 +10,10 @@ using System.Threading.Tasks;
 
 namespace Proto.Mailbox
 {
-    public interface IMessageInvoker
+    public interface IMessageInvoker<T>
     {
         Task InvokeSystemMessageAsync(object msg);
-        Task InvokeUserMessageAsync(object msg);
+        Task InvokeUserMessageAsync(T msg);
         void EscalateFailure(Exception reason, object message);
     }
 

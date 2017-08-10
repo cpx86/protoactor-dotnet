@@ -6,10 +6,10 @@
 
 namespace Proto.Mailbox
 {
-    public interface IMailboxQueue
+    public interface IMailboxQueue<T>
     {
         bool HasMessages { get; }
-        void Push(object message);
-        object Pop();
+        void Push(T message);
+        bool Pop(out T message);
     }
 }

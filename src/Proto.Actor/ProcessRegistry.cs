@@ -13,18 +13,18 @@ namespace Proto
     public class ProcessRegistry
     {
         private const string NoHost = "nonhost";
-        private readonly IList<Func<PID, Process>> _hostResolvers = new List<Func<PID, Process>>();
+        private readonly IList<Func<PID, IProcess<object>>> _hostResolvers = new List<Func<PID, IProcess<object>>>();
         private readonly HashedConcurrentDictionary _localActorRefs = new HashedConcurrentDictionary();
         private int _sequenceId;
         public static ProcessRegistry Instance { get; } = new ProcessRegistry();
         public string Address { get; set; } = NoHost;
 
-        public void RegisterHostResolver(Func<PID, Process> resolver)
+        public void RegisterHostResolver(Func<PID, IProcess<object>> resolver)
         {
             _hostResolvers.Add(resolver);
         }
 
-        public Process Get(PID pid)
+        public IProcess Get(PID pid)
         {
             if (pid.Address != NoHost && pid.Address != Address)
             {
@@ -47,7 +47,7 @@ namespace Proto
             return DeadLetterProcess.Instance;
         }
 
-        public (PID pid, bool ok) TryAdd(string id, Process process)
+        public (PID pid, bool ok) TryAdd(string id, IProcess process)
         {
             var pid = new PID(Address, id, process);
             

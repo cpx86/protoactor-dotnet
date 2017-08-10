@@ -16,37 +16,38 @@ namespace Proto.Mailbox
         public const int Busy = 1;
     }
 
-    public interface IMailbox
+    public interface IMailbox<T>
     {
-        void PostUserMessage(object msg);
+        void PostUserMessage(T msg);
         void PostSystemMessage(object msg);
-        void RegisterHandlers(IMessageInvoker invoker, IDispatcher dispatcher);
+        void RegisterHandlers(IMessageInvoker<T> invoker, IDispatcher dispatcher);
         void Start();
     }
 
     public static class BoundedMailbox
     {
-        public static IMailbox Create(int size, params IMailboxStatistics[] stats)
+        public static IMailbox<T> Create<T>(int size, params IMailboxStatistics[] stats)
         {
-            return new DefaultMailbox(new UnboundedMailboxQueue(), new BoundedMailboxQueue(size), stats);
+            throw new NotImplementedException();
+            //return new DefaultMailbox<T>(new UnboundedMailboxQueue(), new BoundedMailboxQueue(size), stats);
         }
     }
 
     public static class UnboundedMailbox
     {
-        public static IMailbox Create(params IMailboxStatistics[] stats)
+        public static IMailbox<T> Create<T>(params IMailboxStatistics[] stats)
         {
-            return new DefaultMailbox(new UnboundedMailboxQueue(), new UnboundedMailboxQueue(), stats);
+            return new DefaultMailbox<T>(new UnboundedMailboxQueue<object>(), new UnboundedMailboxQueue<T>(), stats);
         }
     }
 
-    internal class DefaultMailbox : IMailbox
+    internal class DefaultMailbox<T> : IMailbox<T>
     {
         private readonly IMailboxStatistics[] _stats;
-        private readonly IMailboxQueue _systemMessages;
-        private readonly IMailboxQueue _userMailbox;
+        private readonly IMailboxQueue<object> _systemMessages;
+        private readonly IMailboxQueue<T> _userMailbox;
         private IDispatcher _dispatcher;
-        private IMessageInvoker _invoker;
+        private IMessageInvoker<T> _invoker;
 
         private int _status = MailboxStatus.Idle;
         private long _systemMessageCount;
@@ -54,14 +55,14 @@ namespace Proto.Mailbox
 
         internal int Status => _status;
 
-        public DefaultMailbox(IMailboxQueue systemMessages, IMailboxQueue userMailbox, params IMailboxStatistics[] stats)
+        public DefaultMailbox(IMailboxQueue<object> systemMessages, IMailboxQueue<T> userMailbox, params IMailboxStatistics[] stats)
         {
             _systemMessages = systemMessages;
             _userMailbox = userMailbox;
             _stats = stats ?? new IMailboxStatistics[0];
         }
 
-        public void PostUserMessage(object msg)
+        public void PostUserMessage(T msg)
         {
             _userMailbox.Push(msg);
             foreach (var t in _stats)
@@ -82,7 +83,7 @@ namespace Proto.Mailbox
             Schedule();
         }
 
-        public void RegisterHandlers(IMessageInvoker invoker, IDispatcher dispatcher)
+        public void RegisterHandlers(IMessageInvoker<T> invoker, IDispatcher dispatcher)
         {
             _invoker = invoker;
             _dispatcher = dispatcher;
@@ -122,37 +123,37 @@ namespace Proto.Mailbox
 
         private bool ProcessMessages()
         {
-            object msg = null;
             try
             {
                 for (var i = 0; i < _dispatcher.Throughput; i++)
                 {
-                    if (Interlocked.Read(ref _systemMessageCount) > 0 && (msg = _systemMessages.Pop()) != null)
+                    object sysMsg = null;
+                    if (Interlocked.Read(ref _systemMessageCount) > 0 && _systemMessages.Pop(out sysMsg))
                     {
                         Interlocked.Decrement(ref _systemMessageCount);
-                        if (msg is SuspendMailbox)
+                        if (sysMsg is SuspendMailbox)
                         {
                             _suspended = true;
                         }
-                        else if (msg is ResumeMailbox)
+                        else if (sysMsg is ResumeMailbox)
                         {
                             _suspended = false;
                         }
-                        var t = _invoker.InvokeSystemMessageAsync(msg);
+                        var t = _invoker.InvokeSystemMessageAsync(sysMsg);
                         if (t.IsFaulted)
                         {
-                            _invoker.EscalateFailure(t.Exception, msg);
+                            _invoker.EscalateFailure(t.Exception, sysMsg);
                             continue;
                         }
                         if (!t.IsCompleted)
                         {
                             // if task didn't complete immediately, halt processing and reschedule a new run when task completes
-                            t.ContinueWith(RescheduleOnTaskComplete, msg);
+                            t.ContinueWith(RescheduleOnTaskComplete, sysMsg);
                             return false;
                         }
                         foreach (var t1 in _stats)
                         {
-                            t1.MessageReceived(msg);
+                            t1.MessageReceived(sysMsg);
                         }
                         continue;
                     }
@@ -160,23 +161,23 @@ namespace Proto.Mailbox
                     {
                         break;
                     }
-                    if ((msg = _userMailbox.Pop()) != null)
+                    if (_userMailbox.Pop(out T usrMsg))
                     {
-                        var t = _invoker.InvokeUserMessageAsync(msg);
+                        var t = _invoker.InvokeUserMessageAsync(usrMsg);
                         if (t.IsFaulted)
                         {
-                            _invoker.EscalateFailure(t.Exception, msg);
+                            _invoker.EscalateFailure(t.Exception, usrMsg);
                             continue;
                         }
                         if (!t.IsCompleted)
                         {
                             // if task didn't complete immediately, halt processing and reschedule a new run when task completes
-                            t.ContinueWith(RescheduleOnTaskComplete, msg);
+                            t.ContinueWith(RescheduleOnTaskComplete, usrMsg);
                             return false;
                         }
                         foreach (var t1 in _stats)
                         {
-                            t1.MessageReceived(msg);
+                            t1.MessageReceived(usrMsg);
                         }
                     }
                     else
@@ -187,7 +188,7 @@ namespace Proto.Mailbox
             }
             catch (Exception e)
             {
-                _invoker.EscalateFailure(e, msg);
+                //_invoker.EscalateFailure(e, msg);
             }
             return true;
         }

@@ -12,7 +12,7 @@ namespace Proto
 {
     public partial class PID
     {
-        private Process _process;
+        private IProcess _process;
 
         public PID(string address, string id)
         {
@@ -20,19 +20,19 @@ namespace Proto
             Id = id;
         }
 
-        internal PID(string address, string id, Process process) : this(address, id)
+        internal PID(string address, string id, IProcess process) : this(address, id)
         {
             _process = process;
         }
 
-        internal Process Ref
+        internal IProcess Ref
         {
             get
             {
                 var p = _process;
                 if (p != null)
                 {
-                    if (p is LocalProcess lp && lp.IsDead)
+                    if (p is ILocalProcess lp && lp.IsDead)
                     {
                         _process = null;
                     }
@@ -52,6 +52,12 @@ namespace Proto
         public void Tell(object message)
         {
             var reff = Ref ?? ProcessRegistry.Instance.Get(this);
+            ((IProcess<object>)reff).SendUserMessage(this, message);
+        }
+
+        public void Tell<T>(T message)
+        {
+            var reff = (IProcess<T>) (Ref ?? ProcessRegistry.Instance.Get(this));
             reff.SendUserMessage(this, message);
         }
 
@@ -63,9 +69,10 @@ namespace Proto
 
         public void Request(object message, PID sender)
         {
-            var reff = Ref ?? ProcessRegistry.Instance.Get(this);
-            var messageEnvelope = new MessageEnvelope(message,sender,null);
-            reff.SendUserMessage(this, messageEnvelope);
+            throw new NotImplementedException();
+            //var reff = Ref ?? ProcessRegistry.Instance.Get(this);
+            //var messageEnvelope = new MessageEnvelope(message,sender,null);
+            //reff.SendUserMessage(this, messageEnvelope);
         }
 
         public Task<T> RequestAsync<T>(object message, TimeSpan timeout)

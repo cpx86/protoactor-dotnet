@@ -5,8 +5,9 @@
 // -----------------------------------------------------------------------
 namespace Proto
 {
-    public interface ISenderContext    {
-        object Message { get; }
+    public interface ISenderContext<T>
+    {
+        T Message { get; }
 
         MessageHeader Headers { get; }
     }

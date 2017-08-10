@@ -40,7 +40,7 @@ namespace Proto
             return p;
         }
 
-        public bool TryAdd(string key, Process reff)
+        public bool TryAdd(string key, IProcess reff)
         {
             var p = GetPartition(key);
             lock (p)
@@ -54,7 +54,7 @@ namespace Proto
             }
         }
 
-        public bool TryGetValue(string key, out Process aref)
+        public bool TryGetValue(string key, out IProcess aref)
         {
             var p = GetPartition(key);
             lock (p)
@@ -72,7 +72,7 @@ namespace Proto
             }
         }
 
-        public class Partition : Dictionary<string, Process>
+        public class Partition : Dictionary<string, IProcess>
         {}
     }
 }

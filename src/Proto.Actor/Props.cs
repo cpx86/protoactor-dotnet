@@ -11,32 +11,32 @@ using System.Linq;
 
 namespace Proto
 {
-    public sealed class Props
+    public sealed class Props<T>
     {
-        private Spawner _spawner;
-        public Func<IActor> Producer { get; private set; }
-        public Func<IMailbox> MailboxProducer { get; private set; } = ProduceDefaultMailbox;
+        private Spawner<T> _spawner;
+        public Func<IActor<T>> Producer { get; private set; }
+        public Func<IMailbox<T>> MailboxProducer { get; private set; } = ProduceDefaultMailbox;
         public ISupervisorStrategy SupervisorStrategy { get; private set; } = Supervision.DefaultStrategy;
         public IDispatcher Dispatcher { get; private set; } = Dispatchers.DefaultDispatcher;
-        public IList<Func<Receive, Receive>> ReceiveMiddleware { get; private set; } = new List<Func<Receive, Receive>>();
-        public IList<Func<Sender, Sender>> SenderMiddleware { get; private set; } = new List<Func<Sender, Sender>>();
-        public Receive ReceiveMiddlewareChain { get; set; }
-        public Sender SenderMiddlewareChain { get; set; }
+        public IList<Func<Receive<T>, Receive<T>>> ReceiveMiddleware { get; private set; } = new List<Func<Receive<T>, Receive<T>>>();
+        public IList<Func<Sender<T>, Sender<T>>> SenderMiddleware { get; private set; } = new List<Func<Sender<T>, Sender<T>>>();
+        public Receive<T> ReceiveMiddlewareChain { get; set; }
+        public Sender<T> SenderMiddlewareChain { get; set; }
 
-        public Spawner Spawner
+        public Spawner<T> Spawner
         {
             get => _spawner ?? DefaultSpawner;
             private set => _spawner = value;
         }
 
-        private static IMailbox ProduceDefaultMailbox() => UnboundedMailbox.Create();
+        private static IMailbox<T> ProduceDefaultMailbox() => UnboundedMailbox.Create<T>();
 
-        public static PID DefaultSpawner (string name,Props props,PID parent)
+        public static PID DefaultSpawner(string name, Props<T> props,PID parent)
         {
-            var ctx = new LocalContext(props.Producer, props.SupervisorStrategy, props.ReceiveMiddlewareChain, props.SenderMiddlewareChain, parent);
+            var ctx = new LocalContext<T>(props.Producer, props.SupervisorStrategy, props.ReceiveMiddlewareChain, props.SenderMiddlewareChain, parent);
             var mailbox = props.MailboxProducer();
             var dispatcher = props.Dispatcher;
-            var process = new LocalProcess(mailbox);
+            var process = new LocalProcess<T>(mailbox);
             var (pid, absent) = ProcessRegistry.Instance.TryAdd(name, process);
             if (!absent)
             {
@@ -50,33 +50,33 @@ namespace Proto
             return pid;
         }
 
-        public Props WithProducer(Func<IActor> producer) => Copy(props => props.Producer = producer);
+        public Props<T> WithProducer(Func<IActor<T>> producer) => Copy(props => props.Producer = producer);
 
-        public Props WithDispatcher(IDispatcher dispatcher) => Copy(props => props.Dispatcher = dispatcher);
+        public Props<T> WithDispatcher(IDispatcher dispatcher) => Copy(props => props.Dispatcher = dispatcher);
 
-        public Props WithMailbox(Func<IMailbox> mailboxProducer) => Copy(props => props.MailboxProducer = mailboxProducer);
+        public Props<T> WithMailbox(Func<IMailbox<T>> mailboxProducer) => Copy(props => props.MailboxProducer = mailboxProducer);
 
-        public Props WithChildSupervisorStrategy(ISupervisorStrategy supervisorStrategy) => Copy(props => props.SupervisorStrategy = supervisorStrategy);
+        public Props<T> WithChildSupervisorStrategy(ISupervisorStrategy supervisorStrategy) => Copy(props => props.SupervisorStrategy = supervisorStrategy);
 
-        public Props WithReceiveMiddleware(params Func<Receive, Receive>[] middleware) => Copy(props =>
+        public Props<T> WithReceiveMiddleware(params Func<Receive<T>, Receive<T>>[] middleware) => Copy(props =>
         {
-            props.ReceiveMiddleware = ReceiveMiddleware.Concat(middleware).ToList();
-            props.ReceiveMiddlewareChain = props.ReceiveMiddleware.Reverse()
-                                                .Aggregate((Receive) LocalContext.DefaultReceive, (inner, outer) => outer(inner));
+            //props.ReceiveMiddleware = ReceiveMiddleware.Concat(middleware).ToList();
+            //props.ReceiveMiddlewareChain = props.ReceiveMiddleware.Reverse()
+            //                                    .Aggregate((Receive<T>) LocalContext<T>.DefaultReceive, (inner, outer) => outer(inner));
         });
 
-        public Props WithSenderMiddleware(params Func<Sender, Sender>[] middleware) => Copy(props =>
+        public Props<T> WithSenderMiddleware(params Func<Sender<T>, Sender<T>>[] middleware) => Copy(props =>
         {
-            props.SenderMiddleware = SenderMiddleware.Concat(middleware).ToList();
-            props.SenderMiddlewareChain = props.SenderMiddleware.Reverse()
-                                               .Aggregate((Sender) LocalContext.DefaultSender, (inner, outer) => outer(inner));
+            //props.SenderMiddleware = SenderMiddleware.Concat(middleware).ToList();
+            //props.SenderMiddlewareChain = props.SenderMiddleware.Reverse()
+            //                                   .Aggregate((Sender<T>) LocalContext<T>.DefaultSender, (inner, outer) => outer(inner));
         });
 
-        public Props WithSpawner(Spawner spawner) => Copy(props => props.Spawner = spawner);
+        public Props<T> WithSpawner(Spawner<T> spawner) => Copy(props => props.Spawner = spawner);
 
-        private Props Copy(Action<Props> mutator)
+        private Props<T> Copy(Action<Props<T>> mutator)
         {
-            var props = new Props
+            var props = new Props<T>
             {
                 Dispatcher = Dispatcher,
                 MailboxProducer = MailboxProducer,
@@ -95,5 +95,5 @@ namespace Proto
         internal PID Spawn(string name, PID parent) => Spawner(name, this, parent);
     }
 
-    public delegate PID Spawner(string id, Props props, PID parent);
+    public delegate PID Spawner<T>(string id, Props<T> props, PID parent);
 }

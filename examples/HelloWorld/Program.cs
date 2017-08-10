@@ -18,6 +18,11 @@ class Program
         {
             Who = "ProtoActor"
         });
+
+        pid = Actor.Spawn(Actor.FromProducer(() => new AddActor()));
+        pid.Tell(13);
+        pid.Tell(42);
+        pid.Tell(1337);
         Console.ReadLine();
     }
 
@@ -26,15 +31,27 @@ class Program
         public string Who;
     }
 
-    internal class HelloActor : IActor
+    internal class HelloActor : IActor<Hello>
     {
-        public Task ReceiveAsync(IContext context)
+        public Task ReceiveAsync(IContext<Hello> context)
         {
             var msg = context.Message;
             if (msg is Hello r)
             {
                 Console.WriteLine($"Hello {r.Who}");
             }
+            return Actor.Done;
+        }
+    }
+
+    internal class AddActor : IActor<int>
+    {
+        private int _sum;
+
+        public Task ReceiveAsync(IContext<int> context)
+        {
+            _sum += context.Message;
+            Console.WriteLine(_sum);
             return Actor.Done;
         }
     }

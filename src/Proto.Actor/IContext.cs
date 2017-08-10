@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Proto
 {
-    public interface IContext : ISenderContext
+    public interface IContext<T> : ISenderContext<T>
     {
         /// <summary>
         ///     Gets the PID for the parent of the current actor.
@@ -31,7 +31,7 @@ namespace Proto
         /// <summary>
         ///     Gets the actor associated with this context.
         /// </summary>
-        IActor Actor { get; }
+        IActor<T> Actor { get; }
 
         /// <summary>
         ///     Gets the receive timeout.
@@ -59,7 +59,7 @@ namespace Proto
         /// </summary>
         /// <param name="props">The Props used to spawn the actor</param>
         /// <returns>The PID of the child actor</returns>
-        PID Spawn(Props props);
+        PID Spawn(Props<T> props);
 
         /// <summary>
         ///     Spawns a new child actor based on props and named using a prefix followed by a unique ID.
@@ -67,7 +67,7 @@ namespace Proto
         /// <param name="props">The Props used to spawn the actor</param>
         /// <param name="prefix">The prefix for the actor name</param>
         /// <returns>The PID of the child actor</returns>
-        PID SpawnPrefix(Props props, string prefix);
+        PID SpawnPrefix(Props<T> props, string prefix);
 
         /// <summary>
         ///     Spawns a new child actor based on props and named using the specified name.
@@ -75,7 +75,7 @@ namespace Proto
         /// <param name="props">The Props used to spawn the actor</param>
         /// <param name="name">The actor name</param>
         /// <returns>The PID of the child actor</returns>
-        PID SpawnNamed(Props props, string name);
+        PID SpawnNamed(Props<T> props, string name);
 
         /// <summary>
         ///     Registers the actor as a watcher for the specified PID.
@@ -99,12 +99,12 @@ namespace Proto
 
         void CancelReceiveTimeout();
 
-        Task ReceiveAsync(object message);
-        void Tell(PID target, object message);
-        void Request(PID target, object message);
-        Task<T> RequestAsync<T>(PID target, object message, TimeSpan timeout);
-        Task<T> RequestAsync<T>(PID target, object message, CancellationToken cancellationToken);
-        Task<T> RequestAsync<T>(PID target, object message);
+        Task ReceiveAsync(T message);
+        void Tell(PID target, T message);
+        void Request(PID target, T message);
+        Task<T> RequestAsync<T>(PID target, T message, TimeSpan timeout);
+        Task<T> RequestAsync<T>(PID target, T message, CancellationToken cancellationToken);
+        Task<T> RequestAsync<T>(PID target, T message);
 
         /// <summary>
         ///     Awaits the given target task and once completed, the given action is then completed within the actors concurrency constraint.
