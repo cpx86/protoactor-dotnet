@@ -31,9 +31,9 @@ class Program
         public string Who;
     }
 
-    internal class HelloActor : IActor<Hello>
+    internal class HelloActor : IActor<object>
     {
-        public Task ReceiveAsync(IContext<Hello> context)
+        public Task ReceiveAsync(IContext<object> context)
         {
             var msg = context.Message;
             if (msg is Hello r)

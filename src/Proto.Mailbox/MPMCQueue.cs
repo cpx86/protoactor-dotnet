@@ -33,10 +33,10 @@
 //namespace Proto.Mailbox
 //{
 //    [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
-//    public class MPMCQueue
+//    public class MPMCQueue<T>
 //    {
 //        [FieldOffset(0)]
-//        private readonly Cell[] _buffer;
+//        private readonly Cell<T>[] _buffer;
 //        [FieldOffset(8)]
 //        private readonly int _bufferMask;
 //        [FieldOffset(64)]
@@ -52,18 +52,18 @@
 //            if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException($"{nameof(bufferSize)} should be a power of 2");
 
 //            _bufferMask = bufferSize - 1;
-//            _buffer = new Cell[bufferSize];
+//            _buffer = new Cell<T>[bufferSize];
 
 //            for (var i = 0; i < bufferSize; i++)
 //            {
-//                _buffer[i] = new Cell(i, null);
+//                _buffer[i] = new Cell<T>(i, default(T));
 //            }
 
 //            _enqueuePos = 0;
 //            _dequeuePos = 0;
 //        }
 
-//        public bool TryEnqueue(object item)
+//        public bool TryEnqueue(T item)
 //        {
 //            do
 //            {
@@ -85,7 +85,7 @@
 //            } while (true);
 //        }
 
-//        public void Enqueue(object item)
+//        public void Enqueue(T item)
 //        {
 //            while (true)
 //            {
@@ -95,7 +95,7 @@
 //            }
 //        }
 
-//        public bool TryDequeue(out object result)
+//        public bool TryDequeue(out T result)
 //        {
 //            do
 //            {
@@ -107,37 +107,37 @@
 //                if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
 //                {
 //                    result = Volatile.Read(ref cell.Element);
-//                    buffer[index] = new Cell(pos + bufferMask + 1, null);
+//                    buffer[index] = new Cell<T>(pos + bufferMask + 1, default(T));
 //                    return true;
 //                }
 
 //                if (cell.Sequence < pos + 1)
 //                {
-//                    result = default(object);
+//                    result = default(T);
 //                    return false;
 //                }
 //            } while (true);
 //        }
 
-//        public object Dequeue()
+//        public T Dequeue()
 //        {
 //            while (true)
 //            {
-//                object o;
+//                T o;
 //                if (TryDequeue(out o))
 //                    return o;
 //            }
 //        }
 
 //        [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
-//        private struct Cell
+//        private struct Cell<T>
 //        {
 //            [FieldOffset(0)]
 //            public int Sequence;
 //            [FieldOffset(8)]
-//            public object Element;
+//            public T Element;
 
-//            public Cell(int sequence, object element)
+//            public Cell(int sequence, T element)
 //            {
 //                Sequence = sequence;
 //                Element = element;

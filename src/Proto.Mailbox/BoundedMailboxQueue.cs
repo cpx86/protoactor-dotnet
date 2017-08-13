@@ -6,25 +6,23 @@
 
 //namespace Proto.Mailbox
 //{
-//    internal class BoundedMailboxQueue : IMailboxQueue
+//    internal class BoundedMailboxQueue<T> : IMailboxQueue<T>
 //    {
-//        private readonly MPMCQueue _messages;
+//        private readonly MPMCQueue<T> _messages;
 
 //        public BoundedMailboxQueue(int size)
 //        {
-//            _messages = new MPMCQueue(size);
+//            _messages = new MPMCQueue<T>(size);
 //        }
 
-//        public void Push(object message)
+//        public void Push(T message)
 //        {
 //            _messages.Enqueue(message);
 //        }
 
-//        public object Pop()
+//        public bool Pop(out T message)
 //        {
-//            return _messages.TryDequeue(out var message)
-//                ? message
-//                : null;
+//            return _messages.TryDequeue(out message);
 //        }
 
 //        public bool HasMessages => _messages.Count > 0;

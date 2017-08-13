@@ -123,22 +123,21 @@ namespace Proto.Mailbox
 
         private bool ProcessMessages()
         {
-            try
+            for (var i = 0; i < _dispatcher.Throughput; i++)
             {
-                for (var i = 0; i < _dispatcher.Throughput; i++)
+                if (Interlocked.Read(ref _systemMessageCount) > 0 && _systemMessages.Pop(out var sysMsg))
                 {
-                    object sysMsg = null;
-                    if (Interlocked.Read(ref _systemMessageCount) > 0 && _systemMessages.Pop(out sysMsg))
+                    Interlocked.Decrement(ref _systemMessageCount);
+                    if (sysMsg is SuspendMailbox)
                     {
-                        Interlocked.Decrement(ref _systemMessageCount);
-                        if (sysMsg is SuspendMailbox)
-                        {
-                            _suspended = true;
-                        }
-                        else if (sysMsg is ResumeMailbox)
-                        {
-                            _suspended = false;
-                        }
+                        _suspended = true;
+                    }
+                    else if (sysMsg is ResumeMailbox)
+                    {
+                        _suspended = false;
+                    }
+                    try
+                    {
                         var t = _invoker.InvokeSystemMessageAsync(sysMsg);
                         if (t.IsFaulted)
                         {
@@ -155,13 +154,20 @@ namespace Proto.Mailbox
                         {
                             t1.MessageReceived(sysMsg);
                         }
-                        continue;
                     }
-                    if (_suspended)
+                    catch (Exception e)
                     {
-                        break;
+                        _invoker.EscalateFailure(e, sysMsg);
                     }
-                    if (_userMailbox.Pop(out T usrMsg))
+                    continue;
+                }
+                if (_suspended)
+                {
+                    break;
+                }
+                if (_userMailbox.Pop(out T usrMsg))
+                {
+                    try
                     {
                         var t = _invoker.InvokeUserMessageAsync(usrMsg);
                         if (t.IsFaulted)
@@ -180,15 +186,15 @@ namespace Proto.Mailbox
                             t1.MessageReceived(usrMsg);
                         }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        break;
+                        _invoker.EscalateFailure(e, usrMsg);
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                //_invoker.EscalateFailure(e, msg);
+                else
+                {
+                    break;
+                }
             }
             return true;
         }
