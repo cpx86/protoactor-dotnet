@@ -35,7 +35,7 @@ class Program
 
             var echoProps = FromProducer(() => new EchoActor())
                 .WithDispatcher(d)
-                .WithMailbox(() => BoundedMailbox.Create(2048));
+                .WithMailbox(() => BoundedMailbox.Create<IMessageEnvelope<object>>(2048));
 
             for (var i = 0; i < clientCount; i++)
             {
@@ -43,7 +43,7 @@ class Program
                 completions[i] = tsc;
                 var clientProps = FromProducer(() => new PingActor(tsc, messageCount, batchSize))
                     .WithDispatcher(d)
-                    .WithMailbox(() => BoundedMailbox.Create(2048));
+                    .WithMailbox(() => BoundedMailbox.Create<IMessageEnvelope<object>>(2048));
 
                 clients[i] = Spawn(clientProps);
                 echos[i] = Spawn(echoProps);
@@ -90,9 +90,9 @@ class Program
         public PID Sender { get; }
     }
 
-    public class EchoActor : IActor
+    public class EchoActor : IActor<object>
     {
-        public Task ReceiveAsync(IContext context)
+        public Task ReceiveAsync(IContext<object> context)
         {
             switch (context.Message)
             {
@@ -105,7 +105,7 @@ class Program
     }
 
 
-    public class PingActor : IActor
+    public class PingActor : IActor<object>
     {
         private readonly int _batchSize;
         private readonly TaskCompletionSource<bool> _wgStop;
@@ -119,7 +119,7 @@ class Program
             _batchSize = batchSize;
         }
 
-        public Task ReceiveAsync(IContext context)
+        public Task ReceiveAsync(IContext<object> context)
         {
             switch (context.Message)
             {
@@ -143,7 +143,7 @@ class Program
             return Done;
         }
 
-        private bool SendBatch(IContext context, PID sender)
+        private bool SendBatch(IContext<object> context, PID sender)
         {
             if (_messageCount == 0)
             {
