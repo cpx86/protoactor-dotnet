@@ -12,7 +12,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        var actor = Actor.FromFunc(c =>
+        var actor = Actor.FromFunc<string>(c =>
                          {
                              if (c.Headers.ContainsKey("TraceID"))
                              {
@@ -46,7 +46,7 @@ class Program
             {"SpanID", "2000"}
         };
 
-        var root = new ActorClient(headers, next => async (c, target, envelope) =>
+        var root = new ActorClient<string>(headers, next => async (c, target, envelope) =>
                                    {
                                        envelope.SetHeader("TraceID", c.Headers.GetOrDefault("TraceID"));
                                        envelope.SetHeader("SpanID", c.Headers.GetOrDefault("SpanID"));

@@ -5,9 +5,23 @@
 // -----------------------------------------------------------------------
 namespace Proto
 {
-    public class MessageEnvelope
+    public interface IMessageEnvelope<out T>
     {
-        public MessageEnvelope(object message, PID sender, MessageHeader header)
+        PID Sender { get; }
+        T Message { get; }
+        MessageHeader Header { get; }
+        string GetHeader(string key, string @default = null);
+        void SetHeader(string key, string value);
+    }
+
+    public struct MessageEnvelope<T> : IMessageEnvelope<T>
+    {
+        public MessageEnvelope(T message)
+            :this(message, null, null)
+        {
+        }
+
+        public MessageEnvelope(T message, PID sender, MessageHeader header)
         {
             Sender = sender; // ?? throw new ArgumentNullException(nameof(sender));
             Message = message; // ?? throw new ArgumentNullException(nameof(message));
@@ -15,12 +29,12 @@ namespace Proto
         }
 
         public PID Sender { get; }
-        public object Message { get; }
+        public T Message { get; }
         public MessageHeader Header { get; private set; }
 
         public static (object message, PID sender, MessageHeader headers) Unwrap(object message)
         {
-            if (message is MessageEnvelope envelope)
+            if (message is MessageEnvelope<T> envelope)
             {
                 return (envelope.Message, envelope.Sender, envelope.Header);
             }

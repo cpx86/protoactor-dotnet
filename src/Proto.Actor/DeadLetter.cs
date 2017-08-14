@@ -25,7 +25,7 @@ namespace Proto
 
         public override void SendUserMessage(PID pid, object message)
         {
-            var (msg,sender, _) = MessageEnvelope.Unwrap(message);
+            var (msg,sender, _) = MessageEnvelope<object>.Unwrap(message);
             EventStream.Instance.Publish(new DeadLetterEvent(pid, msg, sender));
         }
 

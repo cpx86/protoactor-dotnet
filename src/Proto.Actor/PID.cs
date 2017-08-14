@@ -57,7 +57,13 @@ namespace Proto
 
         public void Tell<T>(T message)
         {
-            var reff = (IProcess<T>) (Ref ?? ProcessRegistry.Instance.Get(this));
+            var reff = (IProcess<IMessageEnvelope<T>>)(Ref ?? ProcessRegistry.Instance.Get(this));
+            reff.SendUserMessage(this, new MessageEnvelope<T>(message));
+        }
+
+        public void Tell<T>(IMessageEnvelope<T> message)
+        {
+            var reff = (IProcess<IMessageEnvelope<T>>)(Ref ?? ProcessRegistry.Instance.Get(this));
             reff.SendUserMessage(this, message);
         }
 

@@ -1,76 +1,77 @@
-﻿//// -----------------------------------------------------------------------
-////   <copyright file="RootContext.cs" company="Asynkron HB">
-////       Copyright (C) 2015-2017 Asynkron HB All rights reserved
-////   </copyright>
-//// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
+//   <copyright file="RootContext.cs" company="Asynkron HB">
+//       Copyright (C) 2015-2017 Asynkron HB All rights reserved
+//   </copyright>
+// -----------------------------------------------------------------------
 
-//using System;
-//using System.Linq;
-//using System.Threading;
-//using System.Threading.Tasks;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
-//namespace Proto
-//{
-//    public class ActorClient : ISenderContext    {
-//        private readonly Sender _senderMiddleware;
+namespace Proto
+{
+    public class ActorClient<T> : ISenderContext<T>
+    {
+        private readonly Sender<T> _senderMiddleware;
 
-//        public ActorClient(MessageHeader messageHeader, params Func<Sender, Sender>[] middleware)
-//        {
-//            _senderMiddleware = middleware.Reverse()
-//                    .Aggregate((Sender)DefaultSender, (inner, outer) => outer(inner));
-//            Headers = messageHeader;
-//        }
+        public ActorClient(MessageHeader messageHeader, params Func<Sender<T>, Sender<T>>[] middleware)
+        {
+            _senderMiddleware = middleware.Reverse()
+                    .Aggregate((Sender<T>)DefaultSender, (inner, outer) => outer(inner));
+            Headers = messageHeader;
+        }
 
-//        public object Message => null;
-//        public MessageHeader Headers { get; }
+        public T Message => default(T);
+        public MessageHeader Headers { get; }
 
-//        private Task DefaultSender(ISenderContext context,PID target, MessageEnvelope message)
-//        {
-//            target.Tell(message);
-//            return Actor.Done;
-//        }
+        private Task DefaultSender(ISenderContext<T> context, PID target, IMessageEnvelope<T> message)
+        {
+            target.Tell(message);
+            return Actor.Done;
+        }
 
-//        public void Tell(PID target, object message)
-//        {
-//            if (_senderMiddleware != null)
-//            {
-//                if (message is MessageEnvelope messageEnvelope)
-//                {
-//                    //Request based middleware
-//                    _senderMiddleware(this, target, messageEnvelope);
-//                }
-//                else
-//                {
-//                    //tell based middleware
-//                    _senderMiddleware(this, target, new MessageEnvelope(message,null,null));
-//                }
-//            }
-//            else
-//            {
-//                //Default path
-//                target.Tell(message);
-//            }
-//        }
+        public void Tell(PID target, T message)
+        {
+            if (_senderMiddleware != null)
+            {
+               
+                _senderMiddleware(this, target, new MessageEnvelope<T>(message, null, null));
+            }
+            else
+            {
+                //Default path
+                target.Tell(new MessageEnvelope<T>(message, null, null));
+            }
+        }
 
-//        public void Request(PID target, object message,PID sender)
-//        {
-//            var envelope = new MessageEnvelope(message,sender,null);
-//            Tell(target,envelope);
-//        }
+        public void Request(PID target, T message, PID sender)
+        {
+            var envelope = new MessageEnvelope<T>(message, sender, null);
+            if (_senderMiddleware != null)
+            {
 
-//        public Task<T> RequestAsync<T>(PID target, object message, TimeSpan timeout)
-//        {
-//            throw new NotImplementedException();
-//        }
+                _senderMiddleware(this, target, envelope);
+            }
+            else
+            {
+                target.Tell(envelope);
+            }
+        }
 
-//        public Task<T> RequestAsync<T>(PID target, object message, CancellationToken cancellationToken)
-//        {
-//            throw new NotImplementedException();
-//        }
+        public Task<T> RequestAsync<T>(PID target, object message, TimeSpan timeout)
+        {
+            throw new NotImplementedException();
+        }
 
-//        public Task<T> RequestAsync<T>(PID target, object message)
-//        {
-//            throw new NotImplementedException();
-//        }
-//    }
-//}
+        public Task<T> RequestAsync<T>(PID target, object message, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<T> RequestAsync<T>(PID target, object message)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

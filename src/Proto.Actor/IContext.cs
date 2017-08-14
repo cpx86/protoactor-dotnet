@@ -99,12 +99,12 @@ namespace Proto
 
         void CancelReceiveTimeout();
 
-        Task ReceiveAsync(T message);
-        void Tell(PID target, T message);
-        void Request(PID target, T message);
-        Task<T> RequestAsync<T>(PID target, T message, TimeSpan timeout);
-        Task<T> RequestAsync<T>(PID target, T message, CancellationToken cancellationToken);
-        Task<T> RequestAsync<T>(PID target, T message);
+        Task ReceiveAsync(IMessageEnvelope<T> message);
+        void Tell<TMessage>(PID target, TMessage message);
+        void Request<TRequest>(PID target, TRequest message);
+        Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message, TimeSpan timeout);
+        Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message, CancellationToken cancellationToken);
+        Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message);
 
         /// <summary>
         ///     Awaits the given target task and once completed, the given action is then completed within the actors concurrency constraint.

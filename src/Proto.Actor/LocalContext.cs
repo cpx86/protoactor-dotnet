@@ -22,7 +22,7 @@ namespace Proto
         Stopping
     }
 
-    public class LocalContext<T> : IMessageInvoker<T>, IContext<T>, ISupervisor
+    public class LocalContext<T> : IMessageInvoker<IMessageEnvelope<T>>, IContext<T>, ISupervisor
     {
         public static readonly IReadOnlyCollection<PID> EmptyChildren = new List<PID>();
         private readonly Func<IActor<T>> _producer;
@@ -31,7 +31,7 @@ namespace Proto
         private readonly Sender<T> _senderMiddleware;
         private readonly ISupervisorStrategy _supervisorStrategy;
         private FastSet<PID> _children;
-        private T _message;
+        private IMessageEnvelope<T> _messageEnvelope;
 
         //TODO: I would like to extract these two as optional components in the future
         //for ReceiveTimeout we could have an object with the SetReceiveTimeout
@@ -72,27 +72,19 @@ namespace Proto
 
         public T Message
         {
-            get
-            {
-                return _message;
-                //var r = _message as MessageEnvelope;
-                //return r != null ? r.Message : _message;
-            }
+            get => _messageEnvelope.Message;
         }
 
-        public PID Sender => (_message as MessageEnvelope)?.Sender;
+        public PID Sender => _messageEnvelope.Sender;
 
         public MessageHeader Headers
         {
             get
             {
-                //if (_message is MessageEnvelope messageEnvelope)
-                //{
-                //    if (messageEnvelope.Header != null)
-                //    {
-                //        return messageEnvelope.Header;
-                //    }
-                //}
+                if (_messageEnvelope.Header != null)
+                {
+                    return _messageEnvelope.Header;
+                }
                 return MessageHeader.EmptyHeader;
             }
         }
@@ -183,34 +175,35 @@ namespace Proto
             ReceiveTimeout = TimeSpan.Zero;
         }
 
-        public Task ReceiveAsync(T message)
+        public Task ReceiveAsync(IMessageEnvelope<T> message)
         {
             return ProcessMessageAsync(message);
         }
 
-        public void Tell(PID target, T message)
+        public void Tell<TMessage>(PID target, TMessage message)
         {
-            SendUserMessage(target, message);
-        }
-
-        public void Request(PID target, T message)
-        {
-            var messageEnvelope = new MessageEnvelope(message, Self, null);
+            var messageEnvelope = new MessageEnvelope<TMessage>(message, null, null);
             SendUserMessage(target, messageEnvelope);
         }
 
-        public Task<T> RequestAsync<T>(PID target, T message, TimeSpan timeout)
-            => RequestAsync(target, message, new FutureProcess<T>(timeout));
+        public void Request<TRequest>(PID target, TRequest message)
+        {
+            var messageEnvelope = new MessageEnvelope<TRequest>(message, Self, null);
+            SendUserMessage(target, messageEnvelope);
+        }
 
-        public Task<T> RequestAsync<T>(PID target, T message, CancellationToken cancellationToken)
-            => RequestAsync(target, message, new FutureProcess<T>(cancellationToken));
+        public Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message, TimeSpan timeout)
+            => RequestAsync(target, message, new FutureProcess<TResponse>(timeout));
 
-        public Task<T> RequestAsync<T>(PID target, T message)
-            => RequestAsync(target, message, new FutureProcess<T>());
+        public Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message, CancellationToken cancellationToken)
+            => RequestAsync(target, message, new FutureProcess<TResponse>(cancellationToken));
+
+        public Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message)
+            => RequestAsync(target, message, new FutureProcess<TResponse>());
 
         public void ReenterAfter<T2>(Task<T2> target, Func<Task<T2>, Task> action)
         {
-            var msg = _message;
+            var msg = _messageEnvelope;
             var cont = new Continuation(() => action(target), msg);
 
             target.ContinueWith(t => { Self.SendSystemMessage(cont); });
@@ -300,7 +293,7 @@ namespace Proto
             }
         }
 
-        public Task InvokeUserMessageAsync(T msg)
+        public Task InvokeUserMessageAsync(IMessageEnvelope<T> msg)
         {
             var influenceTimeout = true;
             if (ReceiveTimeout > TimeSpan.Zero)
@@ -344,39 +337,30 @@ namespace Proto
             return c.Actor.ReceiveAsync(context);
         }
 
-        internal static Task DefaultSender(ISenderContext<T> context, PID target, MessageEnvelope envelope)
+        internal static Task DefaultSender<TMessage>(ISenderContext<TMessage> context, PID target, IMessageEnvelope<TMessage> envelope)
         {
-            //((IProcess<T>)target.Ref).SendUserMessage(target, envelope);
+            ((IProcess<IMessageEnvelope<TMessage>>)target.Ref).SendUserMessage(target, envelope);
             return Task.FromResult(0);
         }
 
-        private Task ProcessMessageAsync(T msg)
+        private Task ProcessMessageAsync(IMessageEnvelope<T> msg)
         {
-            _message = msg;
+            _messageEnvelope = msg;
             return _receiveMiddleware != null ? _receiveMiddleware(this) : DefaultReceive(this);
         }
 
-        private Task<T> RequestAsync<T>(PID target, object message, FutureProcess<T> future)
+        private Task<TResponse> RequestAsync<TRequest, TResponse>(PID target, TRequest message, FutureProcess<TResponse> future)
         {
-            var messageEnvelope = new MessageEnvelope(message, future.Pid, null);
+            var messageEnvelope = new MessageEnvelope<TRequest>(message, future.Pid, null);
             SendUserMessage(target, messageEnvelope);
             return future.Task;
         }
 
-        private void SendUserMessage(PID target, object message)
+        private void SendUserMessage<TMessage>(PID target, MessageEnvelope<TMessage> message)
         {
             if (_senderMiddleware != null)
             {
-                if (message is MessageEnvelope messageEnvelope)
-                {
-                    //Request based middleware
-                    _senderMiddleware(this, target, messageEnvelope);
-                }
-                else
-                {
-                    //tell based middleware
-                    _senderMiddleware(this, target, new MessageEnvelope(message, null, null));
-                }
+                //_senderMiddleware(this, target, message);
             }
             else
             {

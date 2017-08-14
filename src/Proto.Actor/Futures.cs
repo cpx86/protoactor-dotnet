@@ -53,8 +53,7 @@ namespace Proto
 
         public override void SendUserMessage(PID pid, T message)
         {
-            var env = MessageEnvelope.Unwrap(message);
-            
+            var env = MessageEnvelope<T>.Unwrap(message);
 
             if (env.message is T || message == null)
             {

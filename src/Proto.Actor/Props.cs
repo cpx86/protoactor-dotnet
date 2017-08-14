@@ -7,15 +7,86 @@
 using Proto.Mailbox;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Proto
 {
+    //public delegate Task SenderMiddlewareDelegate<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope);
+    //public interface ISenderMiddleware
+    //{
+    //    Task Invoke<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope, SenderMiddlewareDelegate<T> next);
+    //}
+
+    //class FooMiddleware : ISenderMiddleware
+    //{
+    //    public Task Invoke<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope, SenderMiddlewareDelegate<T> next)
+    //    {
+    //        // do stuff
+    //        return next(ctx, target, envelope);
+    //    }
+    //}
+
+    //class BarMiddleware : ISenderMiddleware
+    //{
+    //    public Task Invoke<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope, SenderMiddlewareDelegate<T> next)
+    //    {
+    //        // do stuff
+    //        return next(ctx, target, envelope);
+    //    }
+    //}
+
+    //class DefaultMiddleware : ISenderMiddleware
+    //{
+    //    public static readonly DefaultMiddleware Instance = new DefaultMiddleware();
+    //    public Task Invoke<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope, SenderMiddlewareDelegate<T> next)
+    //    {
+    //        ((IProcess<MessageEnvelope<T>>)target.Ref).SendUserMessage(target, envelope);
+    //        return Task.FromResult(0);
+    //    }
+    //}
+
+    //class MiddlewareChain : ISenderMiddleware
+    //{
+    //    private readonly IEnumerable<ISenderMiddleware> _middlewares;
+
+    //    public MiddlewareChain(IEnumerable<ISenderMiddleware> middlewares)
+    //    {
+    //        _middlewares = middlewares;
+    //    }
+
+    //    public Task Invoke<T>(ISenderContext<T> ctx, PID target, MessageEnvelope<T> envelope, SenderMiddlewareDelegate<T> next)
+    //    {
+    //        var chain = _middlewares
+    //            .Reverse()
+    //            .Aggregate((ISenderMiddleware)DefaultMiddleware.Instance, (outer, inner) =>
+    //            {
+    //                return inner.Invoke(ctx, target, envelope, outer.Invoke);
+    //            });
+
+    //    }
+
+    //    internal static Task DefaultSender<TMessage>(ISenderContext<TMessage> context, PID target, MessageEnvelope<TMessage> envelope)
+    //    {
+    //        ((IProcess<MessageEnvelope<TMessage>>)target.Ref).SendUserMessage(target, envelope);
+    //        return Task.FromResult(0);
+    //    }
+    //}
+
+    //class Test
+    //{
+    //    public void BuildMiddlewareChain(IEnumerable<ISenderMiddleware> middlewares)
+    //    {
+    //        var chain = new MiddlewareChain(middlewares);
+    //    }
+    //}
+
     public sealed class Props<T>
     {
         private Spawner<T> _spawner;
         public Func<IActor<T>> Producer { get; private set; }
-        public Func<IMailbox<T>> MailboxProducer { get; private set; } = ProduceDefaultMailbox;
+        public Func<IMailbox<IMessageEnvelope<T>>> MailboxProducer { get; private set; } = ProduceDefaultMailbox;
         public ISupervisorStrategy SupervisorStrategy { get; private set; } = Supervision.DefaultStrategy;
         public IDispatcher Dispatcher { get; private set; } = Dispatchers.DefaultDispatcher;
         public IList<Func<Receive<T>, Receive<T>>> ReceiveMiddleware { get; private set; } = new List<Func<Receive<T>, Receive<T>>>();
@@ -29,14 +100,14 @@ namespace Proto
             private set => _spawner = value;
         }
 
-        private static IMailbox<T> ProduceDefaultMailbox() => UnboundedMailbox.Create<T>();
+        private static IMailbox<IMessageEnvelope<T>> ProduceDefaultMailbox() => UnboundedMailbox.Create<IMessageEnvelope<T>>();
 
         public static PID DefaultSpawner(string name, Props<T> props,PID parent)
         {
             var ctx = new LocalContext<T>(props.Producer, props.SupervisorStrategy, props.ReceiveMiddlewareChain, props.SenderMiddlewareChain, parent);
             var mailbox = props.MailboxProducer();
             var dispatcher = props.Dispatcher;
-            var process = new LocalProcess<T>(mailbox);
+            var process = new LocalProcess<IMessageEnvelope<T>>(mailbox);
             var (pid, absent) = ProcessRegistry.Instance.TryAdd(name, process);
             if (!absent)
             {
@@ -54,7 +125,7 @@ namespace Proto
 
         public Props<T> WithDispatcher(IDispatcher dispatcher) => Copy(props => props.Dispatcher = dispatcher);
 
-        public Props<T> WithMailbox(Func<IMailbox<T>> mailboxProducer) => Copy(props => props.MailboxProducer = mailboxProducer);
+        public Props<T> WithMailbox(Func<IMailbox<IMessageEnvelope<T>>> mailboxProducer) => Copy(props => props.MailboxProducer = mailboxProducer);
 
         public Props<T> WithChildSupervisorStrategy(ISupervisorStrategy supervisorStrategy) => Copy(props => props.SupervisorStrategy = supervisorStrategy);
 
@@ -67,9 +138,9 @@ namespace Proto
 
         public Props<T> WithSenderMiddleware(params Func<Sender<T>, Sender<T>>[] middleware) => Copy(props =>
         {
-            //props.SenderMiddleware = SenderMiddleware.Concat(middleware).ToList();
-            //props.SenderMiddlewareChain = props.SenderMiddleware.Reverse()
-            //                                   .Aggregate((Sender<T>) LocalContext<T>.DefaultSender, (inner, outer) => outer(inner));
+            props.SenderMiddleware = SenderMiddleware.Concat(middleware).ToList();
+            props.SenderMiddlewareChain = props.SenderMiddleware.Reverse()
+                                               .Aggregate((Sender<T>)LocalContext<T>.DefaultSender, (inner, outer) => outer(inner));
         });
 
         public Props<T> WithSpawner(Spawner<T> spawner) => Copy(props => props.Spawner = spawner);
