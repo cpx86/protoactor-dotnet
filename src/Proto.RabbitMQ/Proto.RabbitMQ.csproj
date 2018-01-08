@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Proto.Remote</AssemblyName>
+    <RootNamespace>Proto.Remote</RootNamespace>
+    <ApplicationIcon />
+    <OutputType>Exe</OutputType>
+    <StartupObject />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="5.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Proto.Actor\Proto.Actor.csproj" />
+    <ProjectReference Include="..\Proto.Mailbox\Proto.Mailbox.csproj" />
+  </ItemGroup>
+
+</Project>
