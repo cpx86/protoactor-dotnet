@@ -2,11 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Proto.Remote</AssemblyName>
-    <RootNamespace>Proto.Remote</RootNamespace>
-    <ApplicationIcon />
-    <OutputType>Exe</OutputType>
-    <StartupObject />
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Proto.Actor\Proto.Actor.csproj" />
     <ProjectReference Include="..\Proto.Mailbox\Proto.Mailbox.csproj" />
+    <ProjectReference Include="..\Proto.Remote\Proto.Remote.csproj" />
   </ItemGroup>
 
 </Project>
