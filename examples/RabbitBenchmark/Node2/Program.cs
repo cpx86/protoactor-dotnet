@@ -45,12 +45,13 @@ namespace Node2
         {
             Serialization.RegisterFileDescriptor(ProtosReflection.Descriptor);
             //Remote.Start("127.0.0.1", 12000);
-            ProtoRabbit.Init("proto-exchange-2", "proto-queue-2",
-                //o => Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(o, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })),
-                //b => JsonConvert.DeserializeObject(Encoding.UTF8.GetString(b), new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })
-                o => Serialization.Serialize(o, Serialization.DefaultSerializerId).ToByteArray(),
-                (b, type) => Serialization.Deserialize(type, ByteString.CopyFrom(b), Serialization.DefaultSerializerId)
-            );
+            ProtoRabbit.Init(new ProtoRabbitConfiguration
+            {
+                Exchange = "proto-exchange-2",
+                Queue = "proto-queue-2",
+                Serializer = o => Serialization.Serialize(o, Serialization.DefaultSerializerId).ToByteArray(),
+                Deserializer = (b, typeName) => Serialization.Deserialize(typeName, ByteString.CopyFrom(b), Serialization.DefaultSerializerId)
+            });
             Actor.SpawnNamed(Actor.FromProducer(() => new EchoActor()), "remote");
             Console.ReadLine();
         }

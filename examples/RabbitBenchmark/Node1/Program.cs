@@ -23,12 +23,13 @@ class Program
         Serialization.RegisterFileDescriptor(ProtosReflection.Descriptor);
         //Remote.Start("127.0.0.1", 12001);
 
-        ProtoRabbit.Init("proto-exchange-1", "proto-queue-1",
-            //o => Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(o, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })),
-            //b => JsonConvert.DeserializeObject(Encoding.UTF8.GetString(b), new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })
-            o => Serialization.Serialize(o, Serialization.DefaultSerializerId).ToByteArray(),
-            (b, type) => Serialization.Deserialize(type, ByteString.CopyFrom(b), Serialization.DefaultSerializerId)
-        );
+        ProtoRabbit.Init(new ProtoRabbitConfiguration
+        {
+            Exchange = "proto-exchange-1",
+            Queue = "proto-queue-1",
+            Serializer = o => Serialization.Serialize(o, Serialization.DefaultSerializerId).ToByteArray(),
+            Deserializer = (b, typeName) => Serialization.Deserialize(typeName, ByteString.CopyFrom(b), Serialization.DefaultSerializerId)
+        });
 
         var messageCount = 1000*10;
         var wg = new AutoResetEvent(false);

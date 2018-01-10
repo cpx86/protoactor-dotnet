@@ -11,6 +11,15 @@ using RabbitMQ.Client.Framing;
 
 namespace Proto.RabbitMQ
 {
+    public class ProtoRabbitConfiguration
+    {
+        public string Exchange { get; set; }
+        public string Queue { get; set; }
+        public Func<object, byte[]> Serializer { get; set; }
+        public Func<byte[], string, object> Deserializer { get; set; }
+        public Func<RemoteDeliver, string> RoutingKeyFactory { get; set; }
+    }
+
     public class ProtoRabbit
     {
         public static void Main(string[] args)
@@ -18,20 +27,26 @@ namespace Proto.RabbitMQ
            
         }
 
-        public static void Init(string exchange, string queue, Func<object, byte[]> serializer, Func<byte[], string, object> deserializer)
+        public static void Init(ProtoRabbitConfiguration protoRabbitConfiguration)
         {
-            var connectionFactory = new ConnectionFactory() { HostName = "localhost" };
+            var channel = CreateChannel(protoRabbitConfiguration.Exchange, protoRabbitConfiguration.Queue);
+
+            ProcessRegistry.Instance.RegisterHostResolver(pid => new RabbitProcess(pid, channel, protoRabbitConfiguration.Serializer, protoRabbitConfiguration.RoutingKeyFactory));
+            ProcessRegistry.Instance.Address = protoRabbitConfiguration.Exchange;
+            StartConsumer(channel, protoRabbitConfiguration.Queue, protoRabbitConfiguration.Deserializer);
+        }
+
+        private static IModel CreateChannel(string exchange, string queue)
+        {
+            var connectionFactory = new ConnectionFactory() {HostName = "localhost"};
             var connection = connectionFactory.CreateConnection();
             var channel = connection.CreateModel();
 
             channel.ExchangeDeclare(exchange, "direct", true);
-            channel.QueueDeclare(queue, true, true, false);
+            channel.QueueDeclare(queue, true, false, false);
             channel.QueueBind(queue, exchange, "");
             channel.ConfirmSelect();
-
-            ProcessRegistry.Instance.RegisterHostResolver(pid => new RabbitProcess(pid, channel, serializer));
-            ProcessRegistry.Instance.Address = exchange;
-            StartConsumer(channel, queue, deserializer);
+            return channel;
         }
 
         private static void StartConsumer(IModel channel, string queue, Func<byte[], string, object> deserializer)
@@ -66,12 +81,14 @@ namespace Proto.RabbitMQ
         private readonly IModel _channel;
         private readonly Func<object, byte[]> _serializer;
         private static readonly ConcurrentDictionary<string, PID> Connections = new ConcurrentDictionary<string, PID>();
+        private Func<RemoteDeliver, string> _routingKeyFactory;
 
-        public RabbitProcess(PID pid, IModel channel, Func<object, byte[]> serializer)
+        public RabbitProcess(PID pid, IModel channel, Func<object, byte[]> serializer, Func<RemoteDeliver, string> routingKeyFactory)
         {
             _pid = pid;
             _channel = channel;
             _serializer = serializer;
+            _routingKeyFactory = routingKeyFactory;
         }
 
         protected override void SendUserMessage(PID pid, object message) => Send(_pid, message);
@@ -80,7 +97,7 @@ namespace Proto.RabbitMQ
 
         private void Send(PID pid, object message)
         {
-            PID PublisherFactory(string s) => Actor.Spawn(Actor.FromProducer(() => new RabbitPublisher(_channel, _serializer)));
+            PID PublisherFactory(string s) => Actor.Spawn(Actor.FromProducer(() => new RabbitPublisher(_channel, _serializer, _routingKeyFactory)));
             var publisher = Connections.GetOrAdd(pid.Address, PublisherFactory);
             var (msg, sender, header) = Proto.MessageEnvelope.Unwrap(message);
             publisher.Tell(new RemoteDeliver(MessageHeader.EmptyHeader, msg, pid, sender, Serialization.DefaultSerializerId));
@@ -91,11 +108,13 @@ namespace Proto.RabbitMQ
     {
         private readonly IModel _channel;
         private readonly Func<object, byte[]> _serializer;
+        private Func<RemoteDeliver, string> _routingKeyFactory;
 
-        public RabbitPublisher(IModel channel, Func<object, byte[]> serializer)
+        public RabbitPublisher(IModel channel, Func<object, byte[]> serializer, Func<RemoteDeliver, string> routingKeyFactory)
         {
             _channel = channel;
             _serializer = serializer;
+            _routingKeyFactory = routingKeyFactory;
         }
 
         public Task ReceiveAsync(IContext context)
@@ -113,7 +132,8 @@ namespace Proto.RabbitMQ
                     props.Headers["protoactor-process-id"] = rd.Target.Id;
                     props.Headers["protoactor-message-typename"] = Serialization.GetTypeName(rd.Message, Serialization.DefaultSerializerId);
                     var body = _serializer(rd.Message);
-                    _channel.BasicPublish(rd.Target.Address, "", props, body);
+                    var routingKey = _routingKeyFactory?.Invoke(rd) ?? string.Empty;
+                    _channel.BasicPublish(rd.Target.Address, routingKey, props, body);
                     break;
             }
             return Actor.Done;
