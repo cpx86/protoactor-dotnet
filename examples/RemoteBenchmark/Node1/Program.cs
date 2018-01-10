@@ -5,14 +5,10 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf;
 using Messages;
-using Newtonsoft.Json;
 using Proto;
-using Proto.RabbitMQ;
 using Proto.Remote;
 using ProtosReflection = Messages.ProtosReflection;
 
@@ -21,19 +17,15 @@ class Program
     static void Main(string[] args)
     {
         Serialization.RegisterFileDescriptor(ProtosReflection.Descriptor);
-        //Remote.Start("127.0.0.1", 12001);
+        Remote.Start("127.0.0.1", 12001);
 
-        ProtoRabbit.Init(//o => Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(o, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })),
-            //b => JsonConvert.DeserializeObject(Encoding.UTF8.GetString(b), new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All })
-            new ProtoRabbitConfiguration(new InClassName(new InClassName(new ProtoRabbitConfiguration("proto-exchange-1", "proto-queue-1", o => Serialization.Serialize(o, Serialization.DefaultSerializerId).ToByteArray(), (b, type) => Serialization.Deserialize(type, ByteString.CopyFrom(b), Serialization.DefaultSerializerId))))));
-
-        var messageCount = 1000*10;
+        var messageCount = 1000000;
         var wg = new AutoResetEvent(false);
         var props = Actor
             .FromProducer(() => new LocalActor(0, messageCount, wg));
 
         var pid = Actor.Spawn(props);
-        var remote = new PID("proto-exchange-2", "remote");
+        var remote = new PID("127.0.0.1:12000", "remote");
         remote.RequestAsync<Start>(new StartRemote {Sender = pid}).Wait();
 
         var start = DateTime.Now;
