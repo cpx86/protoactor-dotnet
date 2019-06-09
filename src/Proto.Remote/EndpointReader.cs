@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Core.Utils;
+using Microsoft.Extensions.Logging;
 using Proto.Mailbox;
 
 namespace Proto.Remote
@@ -15,6 +16,7 @@ namespace Proto.Remote
     public class EndpointReader : Remoting.RemotingBase
     {
         private bool _suspended;
+        private ILogger _log = Log.CreateLogger<EndpointReader>();
 
         public override Task<ConnectResponse> Connect(ConnectRequest request, ServerCallContext context)
         {
@@ -22,7 +24,7 @@ namespace Proto.Remote
             {
                 throw new RpcException(Status.DefaultCancelled, "Suspended");
             }
-
+            
             return Task.FromResult(new ConnectResponse()
             {
                 DefaultSerializerId = Serialization.DefaultSerializerId
@@ -32,6 +34,7 @@ namespace Proto.Remote
         public override async Task Receive(IAsyncStreamReader<MessageBatch> requestStream,
             IServerStreamWriter<Unit> responseStream, ServerCallContext context)
         {
+            _log.LogDebug($"Received messages from {context.Peer}");
             var targets = new PID[100];
             await requestStream.ForEachAsync(batch =>
             {
