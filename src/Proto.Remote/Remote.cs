@@ -58,16 +58,16 @@ namespace Proto.Remote
             throw new ArgumentException($"No Props found for kind '{kind}'");
         }
 
-        public Remote(ActorSystem system, Serialization serialization)
+        public Remote(ActorSystem system, Serialization serialization, RemoteConfig config = null)
         {
             _system = system;
             Serialization = serialization;
-
+            RemoteConfig = config ?? new RemoteConfig();
         }
 
         public void Start(string hostname, int port) => Start(hostname, port, new RemoteConfig());
 
-        public void Start(string hostname, int port, RemoteConfig config)
+        public void Start(string hostname, int port, RemoteConfig config, bool selfHosted = false)
         {
             RemoteConfig = config;
             _endpointManager = new EndpointManager(this, _system);
@@ -80,8 +80,8 @@ namespace Proto.Remote
                 Ports = { new ServerPort(hostname, port, config.ServerCredentials) }
             };
             server.Start();
-
             var boundPort = server.Ports.Single().BoundPort;
+
             _system.ProcessRegistry.SetAddress(config.AdvertisedHostname ?? hostname, config.AdvertisedPort ?? boundPort);
             _endpointManager.Start();
             SpawnActivator();
